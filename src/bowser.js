@@ -13,6 +13,7 @@ export async function validateUrls(page, urls = [], filter, { writeToFile = fals
 
     const options = { writeToFile, filter, blockRequests, dataLayerName };
 
+    page = `results/${page}`;
     if (writeToFile) {
       !existsSync(page) && mkdirSync(page);
     }
@@ -20,7 +21,7 @@ export async function validateUrls(page, urls = [], filter, { writeToFile = fals
     for await (let url of urls) {
       let path = url.replace(/https?:\/\//, '').replace(page, '').replace(/^\/|\/$/g, '').replaceAll('/', '_');
 
-      let filepath = "results/" + page + (path === '' ? '/home/' : `/${path}/`).replace(/\/$/, '.json');
+      let filepath = page + (path === '' ? '/home/' : `/${path}/`).replace(/\/$/, '.json');
 
       if (debug) console.log({ filepath });
       let results = await interceptRequests(browser, url, options);
