@@ -13,15 +13,15 @@ export async function validateUrls(page, urls = [], filter, { writeToFile = fals
 
     const options = { writeToFile, filter, blockRequests, dataLayerName };
 
-    page = `results/${page}`;
+    const page_folder = `results/${page}`;
     if (writeToFile) {
-      !existsSync(page) && mkdirSync(page);
+      !existsSync(page_folder) && mkdirSync(page_folder);
     }
 
     for await (let url of urls) {
       let path = url.replace(/https?:\/\//, '').replace(page, '').replace(/^\/|\/$/g, '').replaceAll('/', '_');
 
-      let filepath = page + (path === '' ? '/home/' : `/${path}/`).replace(/\/$/, '.json');
+      let filepath = page_folder + (path === '' ? '/home/' : `/${path}/`).replace(/\/$/, '.json');
 
       if (debug) console.log({ filepath });
       let results = await interceptRequests(browser, url, options);
