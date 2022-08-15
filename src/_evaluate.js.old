@@ -1,0 +1,73 @@
+import puppeteer from "puppeteer";
+import { write, writeFileSync } from 'fs';
+const DL_NAME = "dataLayer";
+
+let requests = [];
+let camada = [];
+
+const filter = ['google-analytics', 'facebook', 'ga-audiences', 'firebase', 'doubleclick', 'analytics.google', 'googletagmanager', 'cloudfunctions', 'clarity.ms']
+
+
+async function interceptRequests(url) {
+  const browser = await puppeteer.launch({
+    headless: true,
+  });
+
+  const page = await browser.newPage();
+
+  await page.setRequestInterception(true);
+
+
+  page.on('request', request => {
+    const request_url = request.url();
+    if (new RegExp(filter.join('|')).test(request_url)) {
+      let method = request.method();
+      let postData = !request_url.includes('clarity') ? request.postData() : null;
+      requests.push({
+        request_url, method, postData
+      });
+    }
+    request.continue();
+  })
+
+
+  function observeDataLayer() {
+    let copy = [...window.dataLayer];
+
+    window.dataLayer.push_copy = window.dataLayer.push;
+    window.dataLayer.push = function (args) {
+      window.dataLayer.push_copy(args);
+      copy.push(args);
+    }
+
+    window.dataLayer.push({ event: 'oi' })
+
+    return Promise.resolve(copy);
+  }
+
+  page.on('load', async () => {
+    console.log('loaaaad');
+    console.log(page.url());
+    let copy = await page.evaluate(observeDataLayer);
+    camada = copy;
+  });
+
+  await page.goto(url);
+  let scripts = await page.evaluate(
+    () => [...document.querySelectorAll('script')]
+      .map(row => row.src)
+      .filter(row => !row.includes(location.hostname) && row.length > 0))
+  // console.log(dataLayer);
+
+  let dataLayer = await page.evaluate('dataLayer');
+  await browser.close();
+
+  const result = { requests, camada, scripts, dataLayer };
+  await writeFileSync('result.json', JSON.stringify(result, null, 2));
+  console.log(camada.length);
+  console.log(dataLayer.length)
+}
+
+
+
+interceptRequests('https://www.dp6.com.br');
